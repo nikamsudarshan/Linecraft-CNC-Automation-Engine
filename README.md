@@ -1,3 +1,4 @@
+![Linecraft Automated Workcell](Linecraft_Automated_Workcell.jpg)
 
 # Linecraft CNC Automation Engine ⚙️✍️
 
