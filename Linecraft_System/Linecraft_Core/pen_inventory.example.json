@@ -1,0 +1,11 @@
+{
+    "current_pen_id": "default_pen",
+    "pens": {
+        "default_pen": {
+            "name": "Standard Black (200m)",
+            "capacity": 200.0,
+            "used": 0.0
+        }
+        }
+    }
+}

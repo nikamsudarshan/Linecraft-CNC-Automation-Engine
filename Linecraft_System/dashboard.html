@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linecraft OS</title>
+    <style>
+        :root {
+            --bg: #121212;
+            --card: #1e1e1e;
+            --text: #e0e0e0;
+            --accent: #00d4ff;
+            --danger: #ff4b4b;
+            --success: #00ff88;
+            --warn: #ffcc00;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            box-sizing: border-box;
+        }
+
+        /* --- LAYOUT --- */
+        .main-layout { display: flex; gap: 20px; height: 100%; overflow: hidden; }
+        .sidebar { width: 300px; display: flex; flex-direction: column; gap: 15px; }
+        .workspace { flex: 1; display: flex; flex-direction: column; gap: 20px; overflow-y: auto; }
+        .card { background: var(--card); padding: 20px; border-radius: 12px; }
+        h2, h3 { margin-top: 0; color: var(--accent); }
+
+        /* --- BUTTONS --- */
+        button {
+            padding: 12px; border-radius: 8px; border: none; cursor: pointer;
+            font-weight: bold; transition: 0.2s; font-size: 1em;
+        }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        button:active { transform: scale(0.98); }
+
+        .btn-accent { background: var(--accent); color: black; }
+        .btn-grey { background: #444; color: white; }
+        .btn-success { background: var(--success); color: black; }
+        .btn-danger { background: var(--danger); color: white; }
+        .btn-warn { background: var(--warn); color: black; }
+
+        input, select, textarea {
+            width: 100%; background: #2a2a2a; border: 1px solid #444;
+            color: white; padding: 10px; border-radius: 6px; margin-bottom: 10px; box-sizing: border-box;
+        }
+
+        /* --- LISTS --- */
+        ul { list-style: none; padding: 0; margin: 0; }
+        .list-item {
+            padding: 10px; margin-bottom: 5px; background: #2a2a2a;
+            border-radius: 6px; cursor: pointer; border-left: 4px solid transparent;
+        }
+        .list-item:hover { background: #333; }
+        .list-item.active { border-left-color: var(--accent); background: #333; }
+
+        /* --- PREVIEW AREA --- */
+        .assembly-line { display: flex; gap: 20px; height: 350px; }
+        .preview-box {
+            background: white; border-radius: 8px; flex: 1;
+            display: flex; justify-content: center; align-items: center;
+            position: relative; overflow: hidden; border: 2px solid #333;
+        }
+        .preview-box img { max-width: 90%; max-height: 90%; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .preview-label {
+            position: absolute; top: 10px; left: 10px;
+            background: rgba(0,0,0,0.7); color: white;
+            padding: 5px 10px; border-radius: 4px; font-weight: bold; font-size: 0.8em;
+        }
+        .up-next { flex: 0.4; opacity: 0.6; }
+
+        /* --- INK BAR --- */
+        .ink-wrapper { display: flex; align-items: center; gap: 10px; }
+        .ink-container {
+            background: #333; height: 12px; border-radius: 6px; overflow: hidden;
+            width: 150px; border: 1px solid #555;
+        }
+        .ink-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s; }
+
+        /* --- UTILS --- */
+        .row { display: flex; gap: 10px; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight: bold; color: black; }
+        .bg-red { background: var(--danger); }
+        .bg-green { background: var(--success); }
+    </style>
+</head>
+<body>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <h1 style="margin:0;">Linecraft <span style="color:var(--accent)">OS</span></h1>
+        <div id="connection-status" class="badge bg-red">OFFLINE</div>
+    </div>
+
+    <div class="main-layout">
+
+        <div class="sidebar">
+            <div class="card" style="flex:1; display:flex; flex-direction:column;">
+                <h3>📂 Projects</h3>
+                <div class="row">
+                    <input type="text" id="new-project-name" placeholder="Client Name">
+                    <button type="button" onclick="createProject()" class="btn-accent" style="width:auto;">+</button>
+                </div>
+                <ul id="project-list" style="overflow-y:auto; flex:1;"></ul>
+                <button type="button" onclick="loadProjects()" class="btn-grey" style="width:100%; margin-top:10px;">Refresh List</button>
+            </div>
+
+            <div class="card">
+                <h3>🤖 Manual</h3>
+                <div class="row">
+                    <button type="button" onclick="machine('pen_up')" class="btn-grey" style="width:100%">⬆️ UP</button>
+                    <button type="button" onclick="machine('pen_down')" class="btn-grey" style="width:100%">⬇️ DOWN</button>
+                </div>
+                <button type="button" onclick="machine('motors_off')" class="btn-danger" style="width:100%; margin-top:10px;">🔓 UNLOCK MOTORS</button>
+            </div>
+        </div>
+
+        <div class="workspace">
+
+            <div id="screen-welcome" class="card" style="text-align:center; padding:50px;">
+                <h2 style="color:#555;">Select a Project to Begin</h2>
+            </div>
+
+            <div id="screen-details" style="display:none; flex-direction:column; gap:20px;">
+
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
+                    <h2 id="proj-title" style="margin:0">Client Name</h2>
+                    <div>
+                        <button type="button" onclick="showTab('settings')" class="btn-grey">⚙️ Setup</button>
+                        <button type="button" onclick="showTab('production')" class="btn-accent">🖨️ Production</button>
+                    </div>
+                </div>
+
+                <div id="tab-settings" style="display:block;">
+                    <div style="display:flex; gap:20px;">
+                        <div class="card" style="flex:1;">
+                            <h3>⚙️ Generator Config</h3>
+                            <label>Font Family</label>
+                            <select id="font-select"></select>
+
+                            <div class="row">
+                                <div><label>Offset X (mm)</label><input type="number" id="off-x" value="0"></div>
+                                <div><label>Offset Y (mm)</label><input type="number" id="off-y" value="0"></div>
+                            </div>
+
+                            <label>Template Text</label>
+                            <textarea id="template-text" rows="4"></textarea>
+                            <button type="button" onclick="saveSettings()" class="btn-grey" style="width:100%">💾 Save Config</button>
+                        </div>
+
+                        <div class="card" style="flex:1; display:flex; flex-direction:column;">
+                            <h3>⚡ Actions</h3>
+                            <button type="button" onclick="refreshDetails()" class="btn-grey">Check Files</button>
+                            <div class="row" style="margin-top:10px;">
+                                <span id="csv-badge" class="badge bg-red">NO CSV</span>
+                                <span id="tpl-badge" class="badge bg-red">NO SVG</span>
+                            </div>
+
+                            <div style="flex:1;"></div>
+                            <button type="button" onclick="generateBatch()" class="btn-accent" style="width:100%; padding:20px;">GENERATE BATCH</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="tab-production" style="display:none; flex-direction:column; gap:20px;">
+
+                    <div class="assembly-line">
+                        <div class="preview-box">
+                            <div class="preview-label" style="background:var(--accent); color:black;">NOW PRINTING</div>
+                            <img id="img-current" src="" alt="Waiting for batch...">
+                        </div>
+                        <div class="preview-box up-next">
+                            <div class="preview-label">UP NEXT</div>
+                            <img id="img-next" src="" alt="End of Queue">
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                            <div>
+                                <h2 id="status-msg" style="margin:0;">Ready.</h2>
+                                <div style="margin-top:10px; display:flex; gap:5px;">
+                                    <select id="pen-select" onchange="selectPen()" style="padding:5px; width:auto; background:#333; color:white; border:1px solid #555;">
+                                        <option>Loading...</option>
+                                    </select>
+                                    <button onclick="document.getElementById('modal-add-pen').style.display='flex'" style="padding:5px 10px; background:#444; color:white;">+ Pen</button>
+                                </div>
+                            </div>
+
+                            <div style="text-align:right;">
+                                <div style="margin-bottom:5px;">
+                                    <span id="pen-name-display" style="color:var(--accent); font-weight:bold;">Current Pen</span>
+                                </div>
+                                <div class="ink-wrapper">
+                                    <div class="ink-container">
+                                        <div id="ink-bar" class="ink-fill"></div>
+                                    </div>
+                                    <span id="ink-text" style="font-size:0.9em; font-weight:bold;">100%</span>
+                                </div>
+                                <div style="font-size:0.9em; color:#888; margin-top:5px;">Session Time: <span id="stat-time">0:00:00</span></div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; gap:10px; margin-top:20px; align-items:center;">
+                             <button onclick="skipBack()" class="btn-grey">⏪ Prev</button>
+                             <div style="flex:1; background:#333; height:20px; border-radius:10px; overflow:hidden;">
+                                 <div id="progress-bar" style="height:100%; background:var(--accent); width:0%;"></div>
+                             </div>
+                             <button onclick="skipFwd()" class="btn-grey">Next ⏩</button>
+                        </div>
+                        <div style="text-align:center; font-size:0.8em; color:#888;">Card <span id="prog-text">0/0</span></div>
+
+                        <div style="margin-top:20px; display:flex; gap:20px;">
+                            <button id="btn-pause" onclick="togglePause()" class="btn-warn" style="flex:1;">⏸ PAUSE</button>
+                            <button id="btn-start" onclick="startQueue()" class="btn-accent" style="flex:2;">▶ START BATCH</button>
+                            <button id="btn-continue" onclick="continueQueue()" class="btn-success" style="flex:2; display:none;">✅ PAPER CHANGED - CONTINUE</button>
+                        </div>
+
+                        <div style="margin-top:20px; border-top:1px solid #444; padding-top:10px; text-align:center;">
+                             <button type="button" onclick="archiveProject()" style="background:transparent; border:1px solid #555; color:#888;">📦 Order Complete (Archive & Log)</button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-add-pen" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width:300px; border:2px solid var(--accent);">
+            <h3>Add New Pen</h3>
+            <label>Name</label><input type="text" id="new-pen-name" placeholder="e.g. Red Gelly Roll">
+            <label>Capacity (Meters)</label><input type="number" id="new-pen-cap" value="200">
+            <div class="row">
+                <button onclick="document.getElementById('modal-add-pen').style.display='none'" class="btn-grey" style="flex:1">Cancel</button>
+                <button onclick="addNewPen()" class="btn-accent" style="flex:1">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API = "http://127.0.0.1:5000";
+        let currentProject = null;
+        let pollTimer = null;
+
+        // --- INITIALIZATION ---
+        async function init() {
+            try {
+                await fetch(`${API}/status`);
+                document.getElementById('connection-status').className = "badge bg-green";
+                document.getElementById('connection-status').innerText = "ONLINE";
+                loadFonts();
+                loadProjects();
+                loadPens();
+            } catch(e) { console.log("Server Offline"); }
+        }
+
+        // --- QUEUE ACTIONS ---
+        async function skipFwd() { await fetch(`${API}/queue/skip/forward`, {method:'POST'}); }
+        async function skipBack() { await fetch(`${API}/queue/skip/backward`, {method:'POST'}); }
+        async function togglePause() { await fetch(`${API}/queue/pause`, {method:'POST'}); }
+
+        // --- POLLING LOOP (THE BRAIN) ---
+        function startPolling() {
+            if(pollTimer) clearInterval(pollTimer);
+            pollTimer = setInterval(async () => {
+                try {
+                    const res = await fetch(`${API}/queue/status`);
+                    const data = await res.json();
+
+                    // 1. Text Updates
+                    document.getElementById('status-msg').innerText = data.message;
+                    document.getElementById('stat-time').innerText = data.stats.duration_str;
+                    document.getElementById('pen-name-display').innerText = data.stats.pen_name;
+
+                    // 2. Ink Bar Logic
+                    const used = data.stats.pen_used;
+                    const cap = data.stats.pen_capacity;
+                    let pct = ((cap - used) / cap) * 100;
+                    if(pct < 0) pct = 0;
+
+                    document.getElementById('ink-bar').style.width = pct + "%";
+                    document.getElementById('ink-text').innerText = Math.round(pct) + "%";
+                    document.getElementById('ink-bar').style.backgroundColor = pct < 15 ? "var(--danger)" : "var(--accent)";
+
+                    // 3. Preview Images
+                    const imgC = document.getElementById('img-current');
+                    const imgN = document.getElementById('img-next');
+
+                    if (data.current_file) {
+                        imgC.src = `${API}/preview/${currentProject}/${data.current_file}`;
+                        imgC.style.display = 'block';
+                    } else {
+                        imgC.style.display = 'none'; // Hide broken image icon
+                    }
+
+                    if (data.next_file) {
+                        imgN.src = `${API}/preview/${currentProject}/${data.next_file}`;
+                        imgN.style.display = 'block';
+                    } else {
+                        imgN.style.display = 'none';
+                    }
+
+                    // 4. Progress Bar
+                    const progPct = (data.current_index / data.total_files) * 100;
+                    document.getElementById('progress-bar').style.width = progPct + "%";
+                    document.getElementById('prog-text').innerText = `${data.current_index}/${data.total_files}`;
+
+                    // 5. Button Logic
+                    const bS = document.getElementById('btn-start');
+                    const bC = document.getElementById('btn-continue');
+                    const bP = document.getElementById('btn-pause');
+
+                    if(data.state === 'PAUSED') {
+                        bP.innerText = "▶ RESUME";
+                        bP.className = "btn-success";
+                        bS.style.display = 'none';
+                        bC.style.display = 'none';
+                    } else {
+                        bP.innerText = "⏸ PAUSE";
+                        bP.className = "btn-warn";
+
+                        if(data.state === 'WAITING_FOR_PAPER') {
+                            bS.style.display = 'none';
+                            bC.style.display = 'block';
+                        } else if (data.state === 'IDLE') {
+                            bS.style.display = 'block';
+                            bC.style.display = 'none';
+                        } else {
+                            // PLOTTING
+                            bS.style.display = 'none';
+                            bC.style.display = 'none';
+                        }
+                    }
+
+                } catch(e) {}
+            }, 1000);
+        }
+
+        function stopPolling() { if(pollTimer) clearInterval(pollTimer); }
+
+        // --- LOADERS & ACTIONS ---
+        async function loadPens() {
+            const res = await fetch(`${API}/pens`);
+            const data = await res.json();
+            const sel = document.getElementById('pen-select');
+            sel.innerHTML = "";
+            Object.keys(data.pens).forEach(id => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.innerText = data.pens[id].name;
+                if(id === data.active_id) opt.selected = true;
+                sel.appendChild(opt);
+            });
+        }
+
+        async function selectPen() {
+            await fetch(`${API}/pens/select`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({pen_id: document.getElementById('pen-select').value})
+            });
+        }
+
+        async function addNewPen() {
+            const name = document.getElementById('new-pen-name').value;
+            const cap = document.getElementById('new-pen-cap').value;
+            await fetch(`${API}/pens/create`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({name: name, capacity: cap})
+            });
+            document.getElementById('modal-add-pen').style.display = 'none';
+            loadPens();
+        }
+
+        async function loadProjects() {
+            const res = await fetch(`${API}/projects`);
+            const data = await res.json();
+            const list = document.getElementById('project-list');
+            list.innerHTML = "";
+            data.projects.forEach(p => {
+                const li = document.createElement('li');
+                li.className = "list-item";
+                li.innerText = p;
+                li.onclick = () => selectProject(p);
+                list.appendChild(li);
+            });
+        }
+
+        async function createProject() {
+            const name = document.getElementById('new-project-name').value;
+            await fetch(`${API}/projects/create`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({name: name})
+            });
+            document.getElementById('new-project-name').value = "";
+            loadProjects();
+        }
+
+        async function selectProject(name) {
+            currentProject = name;
+            document.getElementById('screen-welcome').style.display='none';
+            document.getElementById('screen-details').style.display='flex';
+            document.getElementById('proj-title').innerText=name;
+            refreshDetails();
+            showTab('settings');
+        }
+
+        async function refreshDetails() {
+            const res = await fetch(`${API}/projects/${currentProject}/details`);
+            const data = await res.json();
+            document.getElementById('font-select').value = data.settings.font || "";
+            document.getElementById('template-text').value = data.settings.template || "";
+            document.getElementById('csv-badge').className = data.has_csv ? "badge bg-green" : "badge bg-red";
+            document.getElementById('tpl-badge').className = data.has_template ? "badge bg-green" : "badge bg-red";
+        }
+
+        async function loadFonts() {
+            const res = await fetch(`${API}/fonts`);
+            const data = await res.json();
+            const sel = document.getElementById('font-select');
+            sel.innerHTML = "";
+            const g1 = document.createElement('optgroup'); g1.label="Variable";
+            const g2 = document.createElement('optgroup'); g2.label="Standard";
+            data.fonts.forEach(f => {
+                const o = document.createElement('option');
+                o.value = f.name; o.innerText = f.name;
+                if(f.type === "Variable") g1.appendChild(o); else g2.appendChild(o);
+            });
+            sel.appendChild(g1); sel.appendChild(g2);
+        }
+
+        async function saveSettings() {
+            await fetch(`${API}/projects/${currentProject}/save`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    font: document.getElementById('font-select').value,
+                    template: document.getElementById('template-text').value,
+                    offset_x: document.getElementById('off-x').value,
+                    offset_y: document.getElementById('off-y').value
+                })
+            });
+            alert("Saved.");
+        }
+
+        async function generateBatch() {
+            alert("Generating...");
+            await fetch(`${API}/projects/${currentProject}/generate`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({
+                    font: document.getElementById('font-select').value,
+                    template: document.getElementById('template-text').value,
+                    offset_x: document.getElementById('off-x').value,
+                    offset_y: document.getElementById('off-y').value
+                })
+            });
+            alert("Done.");
+            refreshDetails();
+        }
+
+        async function archiveProject() {
+            if(!confirm("Archive?")) return;
+            await fetch(`${API}/projects/${currentProject}/archive`, {method:'POST'});
+            alert("Archived.");
+            loadProjects();
+            document.getElementById('screen-welcome').style.display='block';
+            document.getElementById('screen-details').style.display='none';
+        }
+
+        async function machine(c) {
+            await fetch(`${API}/machine`, {
+                method:'POST', headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({command: c})
+            });
+        }
+
+        async function startQueue() { await fetch(`${API}/queue/start`, {method:'POST'}); }
+        async function continueQueue() { await fetch(`${API}/queue/continue`, {method:'POST'}); }
+        async function loadQueue() { await fetch(`${API}/queue/load`, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({project:currentProject})}); }
+
+        function showTab(t) {
+            document.getElementById('tab-settings').style.display = t==='settings'?'block':'none';
+            document.getElementById('tab-production').style.display = t==='production'?'flex':'none';
+            if(t==='production') {
+                loadQueue();
+                loadPens();
+                startPolling();
+            } else {
+                stopPolling();
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
