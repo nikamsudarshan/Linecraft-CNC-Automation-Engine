@@ -54,7 +54,7 @@ The system operates on a continuous software-to-hardware loop:
 **1. Clone the repository:**
 
 ```bash
-git clone https://github.com/YourUsername/Linecraft-CNC-Automation-Engine.git
+git clone https://github.com/nikamsudarshan/Linecraft-CNC-Automation-Engine.git
 cd Linecraft-CNC-Automation-Engine
 
 ```
