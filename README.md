@@ -48,34 +48,36 @@ The system operates on a continuous software-to-hardware loop:
 * **Hardware Interface:** AxiDraw CLI (`axicli`)
 * **Math/Logic:** Coordinate geometry, Pythagorean path estimation
 
----
 
 ### 🚀 Installation & Setup
 
-**1. Clone the repository:**
-
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/nikamsudarshan/Linecraft-CNC-Automation-Engine.git
 cd Linecraft-CNC-Automation-Engine
 
 ```
 
-**2. Install Python Dependencies:**
 
+2. **Install Python Dependencies:**
 ```bash
 pip install -r requirements.txt
 
 ```
 
-**3. Hardware Prerequisites:**
-Ensure that the [AxiDraw software and CLI tools](https://axidraw.com/doc/cli_api/) are installed and accessible on your machine's PATH.
 
-**4. Run the Automation Server:**
-
+3. **Hardware Prerequisites:** Ensure that the **AxiDraw software and CLI tools** (EBB firmware) are installed and accessible on your machine's system PATH.
+4. **Run the Automation Server:**
 ```bash
+# Navigate to the server directory
+cd Linecraft_System/Server
+
+# Start the Flask application
 python app.py
 
 ```
+
+**Access the control dashboard:** Open your local browser and navigate to `http://localhost:5000`.
 
 Access the control dashboard via your local browser at `http://localhost:5000`.
 
